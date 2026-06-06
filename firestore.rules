@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Quizzes - anyone authenticated can read, only admin can write
+    match /quizzes/{quizId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+
+    // Questions - anyone authenticated can read
+    match /questions/{questionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+
+    // Results - user can write their own, read own results
+    match /results/{resultId} {
+      allow read: if request.auth != null &&
+                     resource.data.userId == request.auth.uid;
+      allow write: if request.auth != null &&
+                      request.resource.data.userId == request.auth.uid;
+    }
+
+    // Admin check helper
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
